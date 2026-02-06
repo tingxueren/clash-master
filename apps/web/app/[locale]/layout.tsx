@@ -22,7 +22,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Clash Master",
   description: "Modern and beautiful traffic analysis dashboard for OpenClash",
-  manifest: "/manifest.json",
   icons: {
     icon: "/clash-master.png",
     shortcut: "/clash-master.png",
@@ -62,6 +61,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
+        <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
