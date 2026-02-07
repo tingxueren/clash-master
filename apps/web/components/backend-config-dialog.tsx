@@ -355,6 +355,16 @@ export function BackendConfigDialog({
     token: "",
   });
 
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    host: "",
+    port: "9090",
+    ssl: false,
+    token: "",
+  });
+
+  const [showAddForm, setShowAddForm] = useState(false);
+
   useEffect(() => {
     if (open) {
       loadBackends();
@@ -510,6 +520,7 @@ export function BackendConfigDialog({
           ssl: false,
           token: "",
         });
+        setShowAddForm(false);
         setShowVerifyAnimation(false);
         setPendingBackend(null);
         await loadBackends();
@@ -544,14 +555,14 @@ export function BackendConfigDialog({
   const handleUpdate = async (id: number) => {
     setLoading(true);
     try {
-      const url = buildUrl(formData.host, formData.port, formData.ssl);
+      const url = buildUrl(editFormData.host, editFormData.port, editFormData.ssl);
       await api.updateBackend(id, {
-        name: formData.name,
+        name: editFormData.name,
         url,
-        token: formData.token || undefined,
+        token: editFormData.token || undefined,
       });
       setEditingId(null);
-      setFormData({ name: "", host: "", port: "9090", ssl: false, token: "" });
+      setEditFormData({ name: "", host: "", port: "9090", ssl: false, token: "" });
       await loadBackends();
       await onBackendChange?.();
     } catch (error: any) {
@@ -647,7 +658,7 @@ export function BackendConfigDialog({
     setTestingId(backend.id);
     setTestResult(null);
     try {
-      const result = await api.testBackend(backend.url, backend.token);
+      const result = await api.testBackendById(backend.id);
       setTestResult(result);
     } catch (error: any) {
       setTestResult({
@@ -684,18 +695,19 @@ export function BackendConfigDialog({
 
   const startEdit = (backend: Backend) => {
     setEditingId(backend.id);
-    setFormData({
+    setEditFormData({
       name: backend.name,
       host: backend.host,
       port: String(backend.port || 9090),
       ssl: backend.url.startsWith("https"),
       token: "",
     });
+    setShowAddForm(false);
   };
 
   const cancelEdit = () => {
     setEditingId(null);
-    setFormData({ name: "", host: "", port: "9090", ssl: false, token: "" });
+    setEditFormData({ name: "", host: "", port: "9090", ssl: false, token: "" });
   };
 
   if (!open) return null;
@@ -762,10 +774,10 @@ export function BackendConfigDialog({
                               {t("name")}
                             </label>
                             <Input
-                              value={formData.name}
+                              value={editFormData.name}
                               onChange={(e) =>
-                                setFormData({
-                                  ...formData,
+                                setEditFormData({
+                                  ...editFormData,
                                   name: e.target.value,
                                 })
                               }
@@ -778,10 +790,10 @@ export function BackendConfigDialog({
                               {t("host")}
                             </label>
                             <Input
-                              value={formData.host}
+                              value={editFormData.host}
                               onChange={(e) =>
-                                setFormData({
-                                  ...formData,
+                                setEditFormData({
+                                  ...editFormData,
                                   host: e.target.value,
                                 })
                               }
@@ -796,10 +808,10 @@ export function BackendConfigDialog({
                               {t("port")}
                             </label>
                             <Input
-                              value={formData.port}
+                              value={editFormData.port}
                               onChange={(e) =>
-                                setFormData({
-                                  ...formData,
+                                setEditFormData({
+                                  ...editFormData,
                                   port: e.target.value,
                                 })
                               }
@@ -809,9 +821,9 @@ export function BackendConfigDialog({
                           </div>
                           <div className="col-span-2 flex items-center gap-2 pt-5">
                             <Switch
-                              checked={formData.ssl}
+                              checked={editFormData.ssl}
                               onCheckedChange={(checked) =>
-                                setFormData({ ...formData, ssl: checked })
+                                setEditFormData({ ...editFormData, ssl: checked })
                               }
                             />
                             <label className="text-sm">{t("useSsl")}</label>
@@ -823,14 +835,18 @@ export function BackendConfigDialog({
                           </label>
                           <Input
                             type="password"
-                            value={formData.token}
+                            value={editFormData.token}
                             onChange={(e) =>
-                              setFormData({
-                                ...formData,
+                              setEditFormData({
+                                ...editFormData,
                                 token: e.target.value,
                               })
                             }
-                            placeholder={t("tokenPlaceholder")}
+                            placeholder={
+                              backend.hasToken
+                                ? t("tokenKeepPlaceholder")
+                                : t("tokenPlaceholder")
+                            }
                             className="h-9 mt-1"
                           />
                         </div>
@@ -973,92 +989,119 @@ export function BackendConfigDialog({
                   </div>
                 )}
 
-                {/* Add New Backend Form */}
-                <div className="p-4 rounded-lg border border-dashed border-border bg-muted/50">
-                  <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                    <Plus className="w-4 h-4" />
-                    {backends.length === 0 && isFirstTime
-                      ? t("firstTimeTitle")
-                      : t("addNew")}
-                  </h4>
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs font-medium">
-                          {t("name")} *
-                        </label>
-                        <Input
-                          value={formData.name}
-                          onChange={(e) =>
-                            setFormData({ ...formData, name: e.target.value })
-                          }
-                          placeholder={t("namePlaceholder")}
-                          className="h-9 mt-1"
-                        />
+                {/* Add New Backend */}
+                {showAddForm || (isFirstTime && backends.length === 0) ? (
+                  <div className="p-4 rounded-lg border border-dashed border-border bg-muted/50">
+                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                      <Plus className="w-4 h-4" />
+                      {backends.length === 0 && isFirstTime
+                        ? t("firstTimeTitle")
+                        : t("addNew")}
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs font-medium">
+                            {t("name")} *
+                          </label>
+                          <Input
+                            value={formData.name}
+                            onChange={(e) =>
+                              setFormData({ ...formData, name: e.target.value })
+                            }
+                            placeholder={t("namePlaceholder")}
+                            className="h-9 mt-1"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium">
+                            {t("host")} *
+                          </label>
+                          <Input
+                            value={formData.host}
+                            onChange={(e) =>
+                              setFormData({ ...formData, host: e.target.value })
+                            }
+                            placeholder="192.168.1.1"
+                            className="h-9 mt-1"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-xs font-medium">
+                            {t("port")}
+                          </label>
+                          <Input
+                            value={formData.port}
+                            onChange={(e) =>
+                              setFormData({ ...formData, port: e.target.value })
+                            }
+                            placeholder="9090"
+                            className="h-9 mt-1"
+                          />
+                        </div>
+                        <div className="col-span-2 flex items-center gap-2 pt-5">
+                          <Switch
+                            checked={formData.ssl}
+                            onCheckedChange={(checked) =>
+                              setFormData({ ...formData, ssl: checked })
+                            }
+                          />
+                          <label className="text-sm">{t("useSsl")}</label>
+                        </div>
                       </div>
                       <div>
                         <label className="text-xs font-medium">
-                          {t("host")} *
+                          {t("token")}
                         </label>
                         <Input
-                          value={formData.host}
+                          type="password"
+                          value={formData.token}
                           onChange={(e) =>
-                            setFormData({ ...formData, host: e.target.value })
+                            setFormData({ ...formData, token: e.target.value })
                           }
-                          placeholder="192.168.1.1"
+                          placeholder={t("tokenPlaceholder")}
                           className="h-9 mt-1"
                         />
                       </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <label className="text-xs font-medium">
-                          {t("port")}
-                        </label>
-                        <Input
-                          value={formData.port}
-                          onChange={(e) =>
-                            setFormData({ ...formData, port: e.target.value })
-                          }
-                          placeholder="9090"
-                          className="h-9 mt-1"
-                        />
+                      <div className="flex gap-2">
+                        {backends.length > 0 && (
+                          <Button
+                            variant="ghost"
+                            onClick={() => {
+                              setShowAddForm(false);
+                              setFormData({ name: "", host: "", port: "9090", ssl: false, token: "" });
+                            }}
+                            className="flex-shrink-0">
+                            <X className="w-4 h-4 mr-2" />
+                            {commonT("cancel")}
+                          </Button>
+                        )}
+                        <Button
+                          onClick={handleAdd}
+                          disabled={loading || !formData.name || !formData.host}
+                          className="flex-1">
+                          <Plus className="w-4 h-4 mr-2" />
+                          {isFirstTime && backends.length === 0
+                            ? t("saveAndContinue")
+                            : t("addBackend")}
+                        </Button>
                       </div>
-                      <div className="col-span-2 flex items-center gap-2 pt-5">
-                        <Switch
-                          checked={formData.ssl}
-                          onCheckedChange={(checked) =>
-                            setFormData({ ...formData, ssl: checked })
-                          }
-                        />
-                        <label className="text-sm">{t("useSsl")}</label>
-                      </div>
                     </div>
-                    <div>
-                      <label className="text-xs font-medium">
-                        {t("token")}
-                      </label>
-                      <Input
-                        type="password"
-                        value={formData.token}
-                        onChange={(e) =>
-                          setFormData({ ...formData, token: e.target.value })
-                        }
-                        placeholder={t("tokenPlaceholder")}
-                        className="h-9 mt-1"
-                      />
-                    </div>
-                    <Button
-                      onClick={handleAdd}
-                      disabled={loading || !formData.name || !formData.host}
-                      className="w-full">
-                      <Plus className="w-4 h-4 mr-2" />
-                      {isFirstTime && backends.length === 0
-                        ? t("saveAndContinue")
-                        : t("addBackend")}
-                    </Button>
                   </div>
-                </div>
+                ) : backends.length > 0 ? (
+                  <Button
+                    variant="outline"
+                    className="w-full border-dashed"
+                    onClick={() => {
+                      cancelEdit();
+                      setShowAddForm(true);
+                    }}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    {t("addNew")}
+                  </Button>
+                ) : null}
               </div>
             ) : activeTab === "database" ? (
               // Database Tab

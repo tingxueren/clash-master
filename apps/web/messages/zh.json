@@ -268,6 +268,7 @@
     "useSsl": "使用 HTTPS",
     "namePlaceholder": "例如：路由器",
     "tokenPlaceholder": "可选，如有设置请填写",
+    "tokenKeepPlaceholder": "已设置令牌，留空保持不变",
     "active": "当前活跃",
     "disabled": "已禁用",
     "setActive": "设为活跃",

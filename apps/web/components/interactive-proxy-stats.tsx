@@ -198,6 +198,11 @@ export function InteractiveProxyStats({ data, activeBackendId }: InteractiveProx
     return chartData.reduce((sum, item) => sum + item.value, 0);
   }, [chartData]);
 
+  const topProxies = useMemo(
+    () => [...chartData].sort((a, b) => b.value - a.value).slice(0, 4),
+    [chartData]
+  );
+
   const maxTotal = useMemo(() => {
     if (!chartData.length) return 1;
     return Math.max(...chartData.map(p => p.value));
@@ -405,7 +410,7 @@ export function InteractiveProxyStats({ data, activeBackendId }: InteractiveProx
   }
 
   return (
-    <div className="space-y-6 overflow-x-hidden">
+    <div className="space-y-6">
       {/* Top Section: Three Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Pie Chart (3 columns) */}
@@ -415,8 +420,8 @@ export function InteractiveProxyStats({ data, activeBackendId }: InteractiveProx
               {t("distribution")}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-[200px] w-full">
+          <CardContent className="pt-2 pb-4">
+            <div className="h-[165px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -448,6 +453,47 @@ export function InteractiveProxyStats({ data, activeBackendId }: InteractiveProx
                 </PieChart>
               </ResponsiveContainer>
             </div>
+            {topProxies.length > 0 && (
+              <div className="mt-2">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider text-center">
+                  Top 4
+                </p>
+                <div className="mt-1 space-y-1.5">
+                  {topProxies.map((item, idx) => {
+                    const rankBadgeClass = idx === 0
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                      : idx === 1
+                      ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      : idx === 2
+                      ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300"
+                      : "bg-muted text-muted-foreground";
+
+                    return (
+                    <div
+                      key={item.rawName}
+                      title={item.name}
+                      className="flex items-center gap-1.5 min-w-0"
+                    >
+                      <span
+                        className={cn(
+                          "w-5 h-5 rounded-md text-[10px] font-bold flex items-center justify-center shrink-0",
+                          rankBadgeClass
+                        )}
+                      >
+                        {idx + 1}
+                      </span>
+                      <span
+                        className="px-1.5 py-0.5 rounded-md text-[10px] font-medium text-white/90 truncate min-w-0"
+                        style={{ backgroundColor: item.color }}
+                      >
+                        {item.name}
+                      </span>
+                    </div>
+                  );
+                  })}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

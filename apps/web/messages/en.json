@@ -269,6 +269,7 @@
     "useSsl": "Use HTTPS",
     "namePlaceholder": "e.g., Router",
     "tokenPlaceholder": "Optional, if set please fill in",
+    "tokenKeepPlaceholder": "Token already set, leave blank to keep",
     "active": "Active",
     "disabled": "Disabled",
     "setActive": "Set Active",

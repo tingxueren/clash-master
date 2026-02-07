@@ -275,6 +275,9 @@ export const api = {
     
   testBackend: (url: string, token?: string) =>
     fetchJson<{ success: boolean; message: string }>(`${API_BASE}/backends/test`, 'POST', { url, token }),
+
+  testBackendById: (id: number) =>
+    fetchJson<{ success: boolean; message: string }>(`${API_BASE}/backends/${id}/test`, 'POST'),
     
   // Database management
   getDbStats: () =>

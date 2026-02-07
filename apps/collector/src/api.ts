@@ -497,6 +497,53 @@ export class APIServer {
       return { message: `Backend ${listening ? 'started' : 'stopped'} listening` };
     });
 
+    // Test existing backend connection (uses stored token)
+    app.post('/api/backends/:id/test', async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const backend = this.db.getBackend(parseInt(id));
+      if (!backend) {
+        return reply.status(404).send({ error: 'Backend not found' });
+      }
+
+      try {
+        const wsUrl = backend.url.replace('http://', 'ws://').replace('https://', 'wss://');
+        const fullUrl = wsUrl.includes('/connections') ? wsUrl : `${wsUrl}/connections`;
+
+        const headers: Record<string, string> = {};
+        if (backend.token) {
+          headers['Authorization'] = `Bearer ${backend.token}`;
+        }
+
+        const WebSocket = (await import('ws')).default;
+
+        return new Promise((resolve) => {
+          const ws = new WebSocket(fullUrl, { headers, timeout: 5000 });
+
+          ws.on('open', () => {
+            ws.close();
+            resolve({ success: true, message: 'Connection successful' });
+          });
+
+          ws.on('error', (error: any) => {
+            resolve({ success: false, message: error.message || 'Connection failed' });
+          });
+
+          ws.on('close', (code: number) => {
+            if (code !== 1000 && code !== 1005) {
+              resolve({ success: false, message: `Connection closed with code ${code}` });
+            }
+          });
+
+          setTimeout(() => {
+            ws.terminate();
+            resolve({ success: false, message: 'Connection timeout' });
+          }, 5000);
+        });
+      } catch (error: any) {
+        return { success: false, message: error.message || 'Connection failed' };
+      }
+    });
+
     // Test backend connection
     app.post('/api/backends/test', async (request) => {
       const { url, token } = request.body as { url: string; token?: string };
