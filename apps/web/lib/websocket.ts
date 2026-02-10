@@ -59,15 +59,39 @@ function getRuntimeConfig(): RuntimeConfig | undefined {
   return (window as any).__RUNTIME_CONFIG__ as RuntimeConfig | undefined;
 }
 
-function getWsUrl(): string {
+function normalizeWsUrl(rawUrl: string, runtime?: RuntimeConfig): string {
+  if (typeof window === 'undefined') return rawUrl;
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return trimmed;
+
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+
+  if (trimmed.startsWith('/')) {
+    const host = runtime?.WS_HOST || window.location.host;
+    return `${wsProtocol}://${host}${trimmed}`;
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed.replace(/^http/i, 'ws');
+  }
+
+  return trimmed;
+}
+
+function getWsUrlCandidates(): string[] {
   const runtime = getRuntimeConfig();
   const wsPort = runtime?.WS_PORT || process.env.NEXT_PUBLIC_WS_PORT || '3002';
-  if (runtime?.WS_URL) return runtime.WS_URL;
-  if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL;
+  if (runtime?.WS_URL) return [normalizeWsUrl(runtime.WS_URL, runtime)];
+  if (process.env.NEXT_PUBLIC_WS_URL) return [normalizeWsUrl(process.env.NEXT_PUBLIC_WS_URL, runtime)];
   if (typeof window !== 'undefined') {
-    return `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${runtime?.WS_HOST || window.location.hostname}:${wsPort}`;
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const hostForPort = runtime?.WS_HOST || window.location.hostname;
+    const directUrl = `${wsProtocol}://${hostForPort}:${wsPort}`;
+    const hostForPath = runtime?.WS_HOST || window.location.host;
+    const pathUrl = `${wsProtocol}://${hostForPath}/_cm_ws`;
+    return [pathUrl, directUrl];
   }
-  return `ws://localhost:${wsPort}`;
+  return [`ws://localhost:${wsPort}`];
 }
 
 export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
@@ -111,6 +135,7 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastPingTimeRef = useRef<number>(0);
   const reconnectAttemptsRef = useRef<number>(0);
+  const wsUrlIndexRef = useRef<number>(0);
   const maxReconnectDelayMs = 30000;
   const onMessageRef = useRef(options.onMessage);
   const onConnectRef = useRef(options.onConnect);
@@ -153,17 +178,24 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
 
     setStatus('connecting');
 
-    const wsUrl = getWsUrl();
+    const wsUrls = getWsUrlCandidates();
+    if (wsUrlIndexRef.current >= wsUrls.length) {
+      wsUrlIndexRef.current = 0;
+    }
+    const wsUrl = wsUrls[wsUrlIndexRef.current]!;
     console.log('[WebSocket] Connecting to:', wsUrl);
 
     try {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
+      let opened = false;
 
       ws.onopen = () => {
+        opened = true;
         console.log('[WebSocket] Connected successfully');
         setStatus('connected');
         reconnectAttemptsRef.current = 0;
+        wsUrlIndexRef.current = 0;
         onConnectRef.current?.();
 
         // Start ping interval
@@ -203,6 +235,15 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
         if (pingIntervalRef.current) {
           clearInterval(pingIntervalRef.current);
           pingIntervalRef.current = null;
+        }
+
+        // Try alternate endpoint (e.g. /_cm_ws <-> :3002) before backoff reconnect.
+        if (!opened && wsUrlIndexRef.current < wsUrls.length - 1) {
+          wsUrlIndexRef.current += 1;
+          reconnectTimerRef.current = setTimeout(() => {
+            connect();
+          }, 200);
+          return;
         }
 
         // Auto reconnect with exponential backoff.
@@ -300,6 +341,7 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
 
   const disconnect = useCallback(() => {
     reconnectAttemptsRef.current = 0;
+    wsUrlIndexRef.current = 0;
     cleanup();
     setStatus('disconnected');
   }, [cleanup]);

@@ -320,12 +320,12 @@ export function InteractiveProxyStats({
                   const barPercent = (item.value / maxTotal) * 100;
                   const isSelected = selectedProxy === item.rawName;
                   const badgeColor = item.rank === 0 ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" : item.rank === 1 ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" : item.rank === 2 ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" : "bg-muted text-muted-foreground";
+                  const rawDisplayName = item.rawName || item.name;
                   return (
                     <button key={item.rawName} onClick={() => handleProxyClick(item.rawName)} className={cn("w-full p-2.5 rounded-xl border text-left transition-all duration-200", isSelected ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-border/50 bg-card/50 hover:bg-card hover:border-primary/30")}>
                       <div className="flex items-center gap-2 mb-1.5">
                         <span className={cn("w-5 h-5 rounded-md text-[10px] font-bold flex items-center justify-center shrink-0", badgeColor)}>{item.rank + 1}</span>
-                        <CountryFlag country={item.countryCode} className="h-3.5 w-5" />
-                        <span className="flex-1 text-sm font-medium truncate" title={item.name}>{item.name}</span>
+                        <span className="flex-1 text-sm font-medium truncate" title={rawDisplayName}>{rawDisplayName}</span>
                         <span className="text-sm font-bold tabular-nums shrink-0">{formatBytes(item.value)}</span>
                       </div>
                       <div className="pl-7 space-y-1">

@@ -748,17 +748,14 @@ export default function DashboardPage() {
                         aria-label={autoRefresh ? dashboardT("autoRefresh") : dashboardT("paused")}
                         className={cn(
                           "h-9 w-9 rounded-full transition-colors",
-                          autoRefresh && (!wsEnabled || wsConnected)
+                          autoRefresh
                             ? "text-emerald-600 hover:bg-emerald-500/10"
-                            : autoRefresh && wsEnabled && !wsConnected
-                              ? "text-amber-600 hover:bg-amber-500/10"
-                              : "text-muted-foreground hover:bg-muted",
+                            : "text-muted-foreground hover:bg-muted",
                         )}>
                         <RefreshCw
                           className={cn(
                             "w-4 h-4",
-                            autoRefresh && (!wsEnabled || wsConnected) && "text-emerald-500",
-                            autoRefresh && wsEnabled && !wsConnected && "text-amber-500",
+                            autoRefresh && "text-emerald-500",
                           )}
                           style={
                             autoRefresh

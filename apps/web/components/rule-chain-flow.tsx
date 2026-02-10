@@ -108,8 +108,10 @@ const MergedAnimatedFlowEdge = memo(function MergedAnimatedFlowEdge({
       ? "rgba(16, 185, 129, 0.3)"
       : "rgba(129, 140, 248, 0.3)";
 
-  // Particles only when actively highlighted (not dimmed, not showAll overview, and not zero-traffic)
-  const showParticles = !dimmed && !showAll && !zeroTraffic;
+  // Keep motion only for active traffic links.
+  // Panorama and focused mode share the same three-dot particle style.
+  const showFlowMotion = !dimmed && !zeroTraffic;
+  const motionDuration = "2s";
 
   return (
     <g
@@ -131,11 +133,11 @@ const MergedAnimatedFlowEdge = memo(function MergedAnimatedFlowEdge({
         strokeWidth={1.5}
         strokeLinecap="round"
       />
-      {showParticles && (
+      {showFlowMotion && (
         <>
-          <circle r="3.5" fill={dotColor} opacity="0.9">
+          <circle r={3.5} fill={dotColor} opacity={0.9}>
             <animateMotion
-              dur="2s"
+              dur={motionDuration}
               repeatCount="indefinite"
               path={edgePath}
               begin="0s"
@@ -143,7 +145,7 @@ const MergedAnimatedFlowEdge = memo(function MergedAnimatedFlowEdge({
           </circle>
           <circle r="2.5" fill={dotColor} opacity="0.5">
             <animateMotion
-              dur="2s"
+              dur={motionDuration}
               repeatCount="indefinite"
               path={edgePath}
               begin="0.66s"
@@ -151,7 +153,7 @@ const MergedAnimatedFlowEdge = memo(function MergedAnimatedFlowEdge({
           </circle>
           <circle r="1.5" fill={dotColor} opacity="0.25">
             <animateMotion
-              dur="2s"
+              dur={motionDuration}
               repeatCount="indefinite"
               path={edgePath}
               begin="1.33s"
