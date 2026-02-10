@@ -71,6 +71,7 @@ interface UnifiedRuleChainFlowProps {
 const COLUMN_WIDTH = 280;
 const NODE_HEIGHT = 95;
 const OTHER_NODES_OFFSET = 130;
+const RULE_CHAIN_FLOW_WS_MIN_PUSH_MS = 5000;
 
 // ---------- Custom Edge ----------
 
@@ -875,7 +876,9 @@ function UnifiedRuleChainFlowInner({
   const { status: wsStatus } = useStatsWebSocket({
     backendId: activeBackendId,
     range: stableRange,
+    minPushIntervalMs: RULE_CHAIN_FLOW_WS_MIN_PUSH_MS,
     includeRuleChainFlow: wsEnabled,
+    trackLastMessage: false,
     enabled: wsEnabled,
     onMessage: useCallback((stats: StatsSummary) => {
       if (!stats.ruleChainFlowAll) return;

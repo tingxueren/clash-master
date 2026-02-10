@@ -83,7 +83,6 @@ import type {
   CountryStats,
   DeviceStats,
   ProxyStats,
-  RuleStats,
 } from "@clashmaster/shared";
 
 function formatTimeAgo(date: Date, t: any): string {
@@ -249,13 +248,11 @@ const ProxiesContent = memo(function ProxiesContent({
 });
 
 const RulesContent = memo(function RulesContent({
-  data,
   activeBackendId,
   timeRange,
   backendStatus,
   autoRefresh,
 }: {
-  data?: RuleStats[];
   activeBackendId?: number;
   timeRange: TimeRange;
   backendStatus: BackendStatus;
@@ -264,7 +261,6 @@ const RulesContent = memo(function RulesContent({
   return (
     <div className="space-y-6">
       <InteractiveRuleStats
-        data={data}
         activeBackendId={activeBackendId}
         timeRange={timeRange}
         backendStatus={backendStatus}
@@ -357,7 +353,6 @@ export default function DashboardPage() {
     activeTab === "domains" ||
     activeTab === "countries" ||
     activeTab === "proxies" ||
-    activeTab === "rules" ||
     activeTab === "devices";
 
   const backendsQuery = useQuery({
@@ -534,13 +529,14 @@ export default function DashboardPage() {
   // Only reduce to 30s on lightweight WS tabs (overview/countries).
   useEffect(() => {
     if (!autoRefresh || !isRollingTimePreset(timePreset)) return;
-    const intervalMs = shouldReducePolling ? 30000 : 5000;
+    const intervalMs =
+      activeTab === "rules" ? 30000 : shouldReducePolling ? 30000 : 5000;
     const interval = setInterval(() => {
       setAutoRefreshTick((tick) => tick + 1);
       setTimeRange(getPresetTimeRange(timePreset));
     }, intervalMs);
     return () => clearInterval(interval);
-  }, [autoRefresh, shouldReducePolling, timePreset]);
+  }, [activeTab, autoRefresh, shouldReducePolling, timePreset]);
 
   // Fixed presets: keep HTTP polling only when WS realtime is not active.
   useEffect(() => {
@@ -593,7 +589,6 @@ export default function DashboardPage() {
       case "rules":
         return (
           <RulesContent
-            data={data?.ruleStats}
             activeBackendId={activeBackendId}
             timeRange={timeRange}
             backendStatus={backendStatus}

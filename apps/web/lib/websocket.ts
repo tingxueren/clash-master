@@ -14,6 +14,7 @@ interface WebSocketMessage {
 interface UseStatsWebSocketOptions {
   backendId?: number;
   range?: TimeRange;
+  minPushIntervalMs?: number;
   includeTrend?: boolean;
   trendMinutes?: number;
   trendBucketMinutes?: number;
@@ -39,6 +40,7 @@ interface UseStatsWebSocketOptions {
   ipsPageSortBy?: string;
   ipsPageSortOrder?: "asc" | "desc";
   ipsPageSearch?: string;
+  trackLastMessage?: boolean;
   enabled?: boolean;
   onMessage?: (data: StatsSummary) => void;
   onConnect?: () => void;
@@ -72,6 +74,7 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
   const {
     backendId,
     range,
+    minPushIntervalMs,
     includeTrend,
     trendMinutes,
     trendBucketMinutes,
@@ -97,6 +100,7 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
     ipsPageSortBy,
     ipsPageSortOrder,
     ipsPageSearch,
+    trackLastMessage = true,
     enabled = true,
   } = options;
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
@@ -112,10 +116,12 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
   const onConnectRef = useRef(options.onConnect);
   const onDisconnectRef = useRef(options.onDisconnect);
   const onErrorRef = useRef(options.onError);
+  const trackLastMessageRef = useRef(trackLastMessage);
   onMessageRef.current = options.onMessage;
   onConnectRef.current = options.onConnect;
   onDisconnectRef.current = options.onDisconnect;
   onErrorRef.current = options.onError;
+  trackLastMessageRef.current = trackLastMessage;
 
   const cleanup = useCallback(() => {
     if (reconnectTimerRef.current) {
@@ -174,7 +180,9 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
           const message = JSON.parse(event.data) as WebSocketMessage;
 
           if (message.type === 'stats' && message.data) {
-            setLastMessage(message.data);
+            if (trackLastMessageRef.current) {
+              setLastMessage(message.data);
+            }
             onMessageRef.current?.(message.data);
           } else if (message.type === 'pong') {
             if (lastPingTimeRef.current > 0) {
@@ -229,6 +237,7 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
       backendId,
       start: range?.start,
       end: range?.end,
+      minPushIntervalMs,
       includeTrend,
       trendMinutes,
       trendBucketMinutes,
@@ -260,6 +269,7 @@ export function useStatsWebSocket(options: UseStatsWebSocketOptions = {}) {
     backendId,
     range?.start,
     range?.end,
+    minPushIntervalMs,
     includeTrend,
     trendMinutes,
     trendBucketMinutes,

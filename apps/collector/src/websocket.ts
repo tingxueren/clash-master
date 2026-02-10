@@ -8,6 +8,7 @@ export interface WebSocketMessage {
   backendId?: number;
   start?: string;
   end?: string;
+  minPushIntervalMs?: number;
   includeTrend?: boolean;
   trendMinutes?: number;
   trendBucketMinutes?: number;
@@ -82,6 +83,8 @@ interface ClientInfo {
   ws: WebSocket;
   backendId: number | null; // null means use active backend
   range: ClientRange;
+  minPushIntervalMs: number;
+  lastSentAt: number;
   trend: ClientTrend;
   deviceDetail: ClientDeviceDetail;
   proxyDetail: ClientProxyDetail;
@@ -119,6 +122,8 @@ export class StatsWebSocketServer {
         ws,
         backendId: null,
         range: {},
+        minPushIntervalMs: 0,
+        lastSentAt: 0,
         trend: null,
         deviceDetail: null,
         proxyDetail: null,
@@ -157,6 +162,13 @@ export class StatsWebSocketServer {
               if (parsedRange) {
                 clientInfo.range = parsedRange;
               }
+            }
+
+            if (msg.minPushIntervalMs !== undefined) {
+              clientInfo.minPushIntervalMs = this.parseMinPushIntervalMs(
+                msg.minPushIntervalMs,
+                clientInfo.minPushIntervalMs,
+              );
             }
 
             if (
@@ -303,6 +315,15 @@ export class StatsWebSocketServer {
       start: startDate.toISOString(),
       end: endDate.toISOString(),
     };
+  }
+
+  private parseMinPushIntervalMs(
+    value: number,
+    fallback: number,
+  ): number {
+    if (!Number.isFinite(value)) return fallback;
+    // Keep range conservative to avoid client misuse.
+    return Math.max(0, Math.min(60_000, Math.floor(value)));
   }
 
   private shouldIncludeRealtime(range: ClientRange): boolean {
@@ -854,6 +875,7 @@ export class StatsWebSocketServer {
         timestamp: new Date().toISOString(),
       };
       ws.send(JSON.stringify(message));
+      clientInfo.lastSentAt = Date.now();
     } catch (err) {
       console.error('[WebSocket] Error sending stats:', err);
     }
@@ -876,6 +898,13 @@ export class StatsWebSocketServer {
 
       for (const [ws, clientInfo] of this.clients) {
         if (ws.readyState !== WebSocket.OPEN) continue;
+
+        if (!force && clientInfo.minPushIntervalMs > 0) {
+          const elapsed = now - clientInfo.lastSentAt;
+          if (elapsed < clientInfo.minPushIntervalMs) {
+            continue;
+          }
+        }
 
         const resolvedBackendId = this.resolveBackendId(clientInfo.backendId);
         if (resolvedBackendId === null) continue;
@@ -930,6 +959,7 @@ export class StatsWebSocketServer {
           timestamp: new Date().toISOString(),
         };
         ws.send(JSON.stringify(message));
+        clientInfo.lastSentAt = now;
         sentCount++;
       }
 
